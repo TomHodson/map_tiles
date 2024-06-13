@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/leaflet-hash@0.2.1/leaflet-hash.js"></script>
+        <script src="https://unpkg.com/protomaps-leaflet@3.1.2/dist/protomaps-leaflet.min.js"></script>
+
+        <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" 
+        integrity="sha384-5kMSQJ6S4Qj5i09mtMNrWpSi8iXw230pKU76xTmrpezGnNJQzj0NzXjQLLg+jE7k" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" 
+        integrity="sha384-lPzjPsFQL6te2x+VxmV6q1DpRxpRk0tmnl2cpwAO5y04ESyc752tnEWPKDfl1olr" crossorigin=""/>
+
+	<style>
+		html, body {
+			height: 100%;
+			margin: 0;
+		}
+		.leaflet-container {
+			height: 100%;
+			width: 100%;
+			max-width: 100%;
+			max-height: 100%;
+		}
+
+        .pm25 {
+            filter: invert(1);
+        }
+	</style>
+
+	
+</head>
+<body>
+
+
+
+<div id="map"></div>
+<script>
+
+	const map = L.map('map').setView([51.505, -0.09], 1);
+
+
+    const customtiles = L.tileLayer('tiles/{z}/{x}/{y}.png', {
+		maxZoom: 19,
+        maxNativeZoom: 6,
+        opacity: 1,
+        className: "pm25",
+        // tms: true,
+	}).addTo(map);
+
+
+	const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		maxZoom: 19,
+		attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        opacity: 0.5,
+	}).addTo(map);
+
+    const request = new Request("https://data.sensor.community/static/v2/data.24h.json");
+    
+    fetch(request).then((response) => response.json())
+    .then((json) => {
+        const data = json
+            .filter(entry => entry.sensordatavalues.find(value => value.value_type === 'P1'))
+            .filter(entry => entry.sensordatavalues.find(value => value.value_type === 'P2'))
+            .map(entry => ({
+                    id: entry.sensor.id,
+                    sensor_id: entry.sensor.sensor_type.id,
+                    lat: entry.location.latitude,
+                    lon: entry.location.longitude,
+                    pm10: entry.sensordatavalues.find(value => value.value_type === 'P1').value,
+                    pm2_5: entry.sensordatavalues.find(value => value.value_type === 'P2').value
+                })); 
+        const markers = data.map(m => L.marker([m.lat, m.lon], m));
+        const featureGroup = L.featureGroup(markers);
+        
+        const clusterGroup = L.markerClusterGroup({
+            spiderfyOnMaxZoom: false,
+            showCoverageOnHover: true,
+            maxClusterRadius: 40,
+            singleMarkerMode: true,
+            chunkedLoading: true,
+            // iconCreateFunction: function(cluster) {
+            //     const markers = cluster.getAllChildMarkers();
+            //     const sum = markers
+            //         .map(a => parseFloat(a.options.pm2_5))
+            //         .filter(a => !isNaN(a))
+            //         .reduce((a, b) => a + b, 0)
+
+            //     const mean = sum / markers.length;
+            //     return L.marker({ html: mean.toFixed(2) });
+            // }
+        });
+        clusterGroup.addLayers(markers);
+        map.addLayer(clusterGroup);
+        
+    });
+
+    
+</script>
+
+
+
+</body>
+</html>
