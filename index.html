@@ -58,45 +58,50 @@
         opacity: 0.5,
 	}).addTo(map);
 
-    const request = new Request("https://data.sensor.community/static/v2/data.24h.json");
+    function addMarkers(url) {
+        const request = new Request(url);
+        
+        fetch(request).then((response) => response.json())
+        .then((json) => {
+            const data = json
+                // .filter(entry => entry.sensordatavalues.find(value => value.value_type === 'P1'))
+                // .filter(entry => entry.sensordatavalues.find(value => value.value_type === 'P2'))
+                .map(entry => ({
+                        id: entry.sensor.id,
+                        sensor_id: entry.sensor.sensor_type.id,
+                        lat: entry.location.latitude,
+                        lon: entry.location.longitude,
+                        // pm10: entry.sensordatavalues.find(value => value.value_type === 'P1').value,
+                        // pm2_5: entry.sensordatavalues.find(value => value.value_type === 'P2').value
+                    })); 
+            const markers = data.map(m => L.marker([m.lat, m.lon], m));
+            const featureGroup = L.featureGroup(markers);
+            
+            const clusterGroup = L.markerClusterGroup({
+                spiderfyOnMaxZoom: false,
+                showCoverageOnHover: true,
+                maxClusterRadius: 40,
+                singleMarkerMode: true,
+                chunkedLoading: true,
+                // iconCreateFunction: function(cluster) {
+                //     const markers = cluster.getAllChildMarkers();
+                //     const sum = markers
+                //         .map(a => parseFloat(a.options.pm2_5))
+                //         .filter(a => !isNaN(a))
+                //         .reduce((a, b) => a + b, 0)
     
-    fetch(request).then((response) => response.json())
-    .then((json) => {
-        const data = json
-            .filter(entry => entry.sensordatavalues.find(value => value.value_type === 'P1'))
-            .filter(entry => entry.sensordatavalues.find(value => value.value_type === 'P2'))
-            .map(entry => ({
-                    id: entry.sensor.id,
-                    sensor_id: entry.sensor.sensor_type.id,
-                    lat: entry.location.latitude,
-                    lon: entry.location.longitude,
-                    pm10: entry.sensordatavalues.find(value => value.value_type === 'P1').value,
-                    pm2_5: entry.sensordatavalues.find(value => value.value_type === 'P2').value
-                })); 
-        const markers = data.map(m => L.marker([m.lat, m.lon], m));
-        const featureGroup = L.featureGroup(markers);
-        
-        const clusterGroup = L.markerClusterGroup({
-            spiderfyOnMaxZoom: false,
-            showCoverageOnHover: true,
-            maxClusterRadius: 40,
-            singleMarkerMode: true,
-            chunkedLoading: true,
-            // iconCreateFunction: function(cluster) {
-            //     const markers = cluster.getAllChildMarkers();
-            //     const sum = markers
-            //         .map(a => parseFloat(a.options.pm2_5))
-            //         .filter(a => !isNaN(a))
-            //         .reduce((a, b) => a + b, 0)
-
-            //     const mean = sum / markers.length;
-            //     return L.marker({ html: mean.toFixed(2) });
-            // }
+                //     const mean = sum / markers.length;
+                //     return L.marker({ html: mean.toFixed(2) });
+                // }
+            });
+            clusterGroup.addLayers(markers);
+            map.addLayer(clusterGroup);
+            
         });
-        clusterGroup.addLayers(markers);
-        map.addLayer(clusterGroup);
-        
-    });
+    }
+
+    // addMarkers("https://data.sensor.community/static/v2/data.24h.json");
+    // addMarkers("http://api.sensors.africa/static/v2/data.24h.json");
 
     
 </script>
